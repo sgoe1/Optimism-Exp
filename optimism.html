@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Product Manager</title>
+    <meta name="author" content="Sidharth Goel">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jsPsych-4.1/jspsych.js"></script>
+    <script src="jsPsych-4.1/plugins/jspsych-text.js"></script>
+    <script src="jsPsych-4.1/plugins/jspsych-single-stim.js"></script>
+    <script src="jsPsych-4.1/plugins/jspsych-call-function.js"></script>
+    <link href="jsPsych-4.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+  </head>
+  <body>
+          <div id='jspsych-target'></div>        
+  </body>
+  <script type="text/javascript">
+
+    // Initializing variables - remember that any changes here need to also be reflected in test_run_block! (and also data.write)
+    var money = 100000
+    var timestep = 0
+    var actions = {73: "invest", 77: "market"}
+    var curr_stage = 0
+    var most_recent_action = ""
+    var most_recent_money = 0
+    var product_stages = {0: [0,0,0,0,0,0,1,1,1,1], 
+                          1: [1,1,1,1,1,1,1,2,2,2],
+                          2: [2,2,2,2,2,2,2,3,3,3],
+                          //3: 
+    }
+
+    var welcome_block = {
+      type: "text",
+      text: "Welcome to the experiment. Press any key to proceed to phase 1."
+    };
+
+    /* define instructions block */
+    var phase1_instructions = {
+      type: "text",
+      text: "<p>You are working for a company, and are tasked with deciding whether "+
+            "to <b>invest</b> in your product or <b>market</b> it.</br> "+
+            "By investing, your product <i>improves</i> with some probability, but "+
+            "immediate profits are stalled. By marketing, your product remains as is " +
+            "but profits are immediate, with the actual amount varying by some probability.</p>"+
+            "<p>In this phase, you will simply get a feel for the experiment, " +
+            "by selecting 'I' to Invest or 'M' to Market.</p>",
+      timing_post_trial: 2000
+    };
+
+    /* currently there is no phase1  */
+    var phase2_instructions = {
+      type: "text",
+      text: "<p>Now that you have understood the experiment, " +
+            "proceed to the actual experiment by pressing any key.</p>" +
+            "<p>You begin with $100,000</p>",
+      //timing_post_trial: 2000
+    };
+
+    var prod0_phase = {
+      type: "text",
+      text: function() {
+            var product_stage_message = ""
+            if (actions[getMostRecentKey()] == 'invest'){
+              product_stage_message = "Your product is now at stage " + curr_stage;
+            }
+            if (actions[getMostRecentKey()] == 'market'){
+              product_stage_message = "Your product remains at stage " + curr_stage;
+            }
+            var trial_data = {
+                money: money,
+                curr_stage: curr_stage,
+                action: most_recent_action,
+                reward: most_recent_money,
+            }
+
+            return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>.</p>" +
+            "<p>This returns a profit of $" + getMoney() + ", for a current total of $" + updateMoney() + ".</p>" +
+            "<p>"+ product_stage_message+ "</p>" +
+            "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
+
+          },
+    };
+
+    var test_run_chunk = {
+        chunk_type: 'while',
+        timeline: [prod0_phase],
+        continue_function: function(){
+            timestep += 1
+            if(timestep >= 5) { //after test run is over, reset all dynamic variables
+              var money = 100000
+              var timestep = 0
+              var curr_stage = 0
+              var most_recent_action = ""
+              var most_recent_money = 0
+              return false; }
+            else { return true; }
+        }
+    }
+
+    var live_run_chunk = {
+        chunk_type: 'while',
+        timeline: [prod0_phase],
+        continue_function: function(){
+            if(curr_stage >= 3) {
+              return false; 
+            }
+            else { return true; }
+        }
+    }
+
+    // /* define debrief block */
+    var debrief_block = {
+      type: "text",
+      text: function() {
+        return "<p>Thank you for your time!</p>";
+      }
+    };
+
+    function getMostRecentKey(){
+      var trials = jsPsych.data.getTrialsOfType('text');
+      var most_recent_trial = trials[trials.length - 1]
+      if (typeof(most_recent_trial) == "undefined"){
+        return ""
+      }
+      most_recent_action = actions[most_recent_trial['key_press']]
+      return most_recent_trial['key_press'];
+
+    }
+
+    //Returns money for specific action
+    function getMoney(){
+      if(most_recent_action == "invest"){
+        var idx = Math.floor(Math.random() * product_stages[curr_stage].length)
+        curr_stage = product_stages[curr_stage][idx]; //updates current stage, with probability
+        most_recent_money = normal_random(-300, 20);
+      }
+      if(most_recent_action == "market"){    //returns reward based on current stage of product
+        var mean = (curr_stage + 1) * 1000;
+        var variance = (curr_stage + 1) * 100;
+        most_recent_money = normal_random(1000, 200);
+      }
+      return most_recent_money;
+    }
+
+    //Returns total amount of money after taking action
+    function updateMoney(){
+      money += most_recent_money
+      return money;
+    }
+
+    //Returns normally distributed values
+    function normal_random(mean, variance) {
+      if (mean == undefined)
+        mean = 0.0;
+      if (variance == undefined)
+        variance = 1.0;
+      var V1, V2, S;
+      do {
+        var U1 = Math.random();
+        var U2 = Math.random();
+        V1 = 2 * U1 - 1;
+        V2 = 2 * U2 - 1;
+        S = V1 * V1 + V2 * V2;
+      } while (S > 1);
+
+      X = Math.sqrt(-2 * Math.log(S) / S) * V1;
+      X = mean + Math.sqrt(variance) * X;
+      return Math.round(X);
+    }
+
+
+    // defining the experiment
+    var experiment = [];
+    experiment.push(welcome_block);
+    experiment.push(phase1_instructions);
+    // experiment.push(test_run_chunk);
+    // experiment.push(phase2_instructions);
+    experiment.push(live_run_chunk);
+    experiment.push(debrief_block);
+
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: experiment,
+      //show_progress_bar: true,
+      // on_trial_finish: function(){
+      //   jsPsych.data.write(trial_data)
+      // },
+      on_finish: function() {
+        jsPsych.data.displayData();
+        var data_as_csv = jsPsych.data.dataAsCSV();
+      }
+    });
+  </script>
+</html>
