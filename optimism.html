@@ -11,7 +11,7 @@
     <link href="jsPsych-4.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
   </head>
   <body>
-          <div id='jspsych-target'></div>        
+          <div id='jspsych-target'></div>      
   </body>
   <script type="text/javascript">
 
@@ -36,22 +36,27 @@
     /* define instructions block */
     var phase1_instructions = {
       type: "text",
-      text: "<p>You are working for a company, and are tasked with deciding whether "+
+      text: "<p>You are working for a company and are tasked with deciding whether "+
             "to <b>invest</b> in your product or <b>market</b> it.</br> "+
-            "By investing, your product <i>improves</i> with some probability, but "+
-            "immediate profits are stalled. By marketing, your product remains as is " +
-            "but profits are immediate, with the actual amount varying by some probability.</p>"+
+            "By investing, your product <i>improves</i>* with some probability, but "+
+            "immediate rewards are negative. By marketing, your product remains as is, " +
+            "but rewards** are positive.</p>"+
+            "<p>* An improved product means that marketing it later will give you a higher reward.</p>"+
+            "<p> **The reward is variable, not fixed.</p>"+
+            "<p> The goal is to maximize your money by the end of the game.</p>"+
             "<p>In this phase, you will simply get a feel for the experiment, " +
-            "by selecting 'I' to Invest or 'M' to Market.</p>",
-      timing_post_trial: 2000
+            "by selecting 'I' to Invest or 'M' to Market.</p>" + "<p>You begin with $" + money +".</p>",
+      cont_key: [73, 77],
+      //timing_post_trial: 2000
     };
 
     /* currently there is no phase1  */
     var phase2_instructions = {
       type: "text",
       text: "<p>Now that you have understood the experiment, " +
-            "proceed to the actual experiment by pressing any key.</p>" +
-            "<p>You begin with $100,000</p>",
+            "proceed to the actual experiment by investing (I) or marketing (M).</p>" +
+            "<p>Again, you begin with $" + money +".</p>",
+      cont_key: [73, 77],
       //timing_post_trial: 2000
     };
 
@@ -70,14 +75,18 @@
                 curr_stage: curr_stage,
                 action: most_recent_action,
                 reward: most_recent_money,
+                timestep: timestep,
             }
 
             return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>.</p>" +
             "<p>This returns a profit of $" + getMoney() + ", for a current total of $" + updateMoney() + ".</p>" +
             "<p>"+ product_stage_message+ "</p>" +
-            "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
+            "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>"+ //cleaner way to do this?
+            "<footer>Timestep: " + timestep +"</footer>";
 
           },
+      cont_key: [73, 77],
+
     };
 
     var test_run_chunk = {
@@ -100,6 +109,7 @@
         chunk_type: 'while',
         timeline: [prod0_phase],
         continue_function: function(){
+            timestep +=1
             if(curr_stage >= 3) {
               return false; 
             }
@@ -107,7 +117,6 @@
         }
     }
 
-    // /* define debrief block */
     var debrief_block = {
       type: "text",
       text: function() {
