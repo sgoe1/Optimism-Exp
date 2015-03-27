@@ -54,7 +54,7 @@
     var phase2_instructions = {
       type: "text",
       text: "<p>Now that you have understood the experiment, " +
-            "proceed to the actual experiment by investing (I) or marketing (M).</p>" +
+            "proceed to the actual experiment (phase 2) by investing (I) or marketing (M).</p>" +
             "<p>Again, you begin with $" + money +".</p>",
       cont_key: [73, 77],
       //timing_post_trial: 2000
@@ -145,7 +145,7 @@
       if(most_recent_action == "market"){    //returns reward based on current stage of product
         var mean = (curr_stage + 1) * 1000;
         var variance = (curr_stage + 1) * 100;
-        most_recent_money = normal_random(1000, 200);
+        most_recent_money = normal_random(mean, variance);
       }
       return most_recent_money;
     }
