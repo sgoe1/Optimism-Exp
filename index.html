@@ -5,6 +5,7 @@
     <meta name="author" content="Sidharth Goel">
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script src="js/jspsych.js"></script>
+    <script src="chart/Chart.js"></script>
     <script src="js/plugins/jspsych-text.js"></script>
     <script src="js/plugins/jspsych-single-stim.js"></script>
     <script src="js/plugins/jspsych-call-function.js"></script>
@@ -12,29 +13,40 @@
     <link href="css/jspsych.css" rel="stylesheet" type="text/css"></link>
   </head>
   <body>
-          <div id='jspsych-target'></div>      
+          <div id='jspsych-target'></div> 
+          <div class="center-content">
+            <canvas id="myChart" width="400" height="400"></canvas>
+          </div> 
   </body>
   <script type="text/javascript">
 
-    // Initializing variables - remember that any changes here need to also be reflected in test_run_block! (and also data.write)
+    // Dynamic variables - remember that any changes here need to also be reflected in test_run_block! (and also data.write)
     var money = 100000
     var timestep = 0
-    var actions = {73: "invest", 77: "market"}
     var curr_stage = 0
     var most_recent_action = ""
     var most_recent_money = 0
-    var product_stages = {0: [0,0,0,0,0,0,1,1,1,1], 
-                          1: [1,1,1,1,1,1,1,2,2,2],
-                          2: [2,2,2,2,2,2,2,3,3,3],
-                          //3: 
-    }
+    var condition = "pessimism" //you can have "optimism", "realism", or "pessimism" here
 
-    var welcome_block = {
-      type: "text",
-      text: "Welcome to the experiment. Press any key to proceed to phase 1."
-    };
+    // Static variables
+    var actions = {73: "invest", 77: "market"}
+    var product_stages = [0.6, 0.7, 0.7]
+    var num_stages = product_stages.length
+    var goal_timesteps = [5, 10] //list of important timesteps, in ascending order
+    var last_timestep = goal_timesteps[goal_timesteps.length -1]
+    var money_points = []
+    var invest_mean = -300    //mean and variance for reward upon investing
+    var invest_variance = 20
+    var market_mean = (curr_stage + 1) * 1000;  //mean and variance for reward upon marketing - should be a function of curr_stage
+    var market_variance = (curr_stage + 1) * 100;
+    var test_timesteps = 5 //how many time steps 
+    var stages_reached = new Set()
+    var internal_timesteps = Array.apply(null, new Array(num_stages)).map(Number.prototype.valueOf,0);
 
-    /* define instructions block */
+    var condition_probs = {"optimism": 1.1, "realism": 1, "pessimism": 0.9} //can adjust level of optimism and pessimism
+    var transition_prob_scaling = condition_probs[condition] 
+
+    /* intial instructions, before test run */
     var phase1_instructions = {
       type: "text",
       text: "<p>You are working for a company and are tasked with deciding whether "+
@@ -51,7 +63,7 @@
       //timing_post_trial: 2000
     };
 
-    /* currently there is no phase1  */
+    /* instructions before actual experiment */
     var phase2_instructions = {
       type: "text",
       text: "<p>Now that you have understood the experiment, " +
@@ -77,6 +89,7 @@
                 action: most_recent_action,
                 reward: most_recent_money,
                 timestep: timestep,
+                condition: condition,
             }
 
             return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>.</p>" +
@@ -94,28 +107,76 @@
         chunk_type: 'while',
         timeline: [prod0_phase],
         continue_function: function(){
+            stages_reached.add(curr_stage)
             timestep += 1
-            if(timestep >= 5) { //after test run is over, reset all dynamic variables
-              var money = 100000
-              var timestep = 0
-              var curr_stage = 0
-              var most_recent_action = ""
-              var most_recent_money = 0
-              return false; }
+            internal_timesteps[curr_stage] +=1
+            if(timestep >= test_timesteps) {  //want to make sure participant has experienced every stage at least once
+              curr_stage+=1
+              // if(stages_reached.size < num_stages){
+              //   curr_stage +=1
+              //   if(internal_timestep < test_timesteps){
+              //     internal_timestep +=1
+              //   }
+              //   else{
+              //     curr_stage +=1
+              //     internal_timestep = 0
+              //   }
+              //   return true;
+              // }
+              return false; 
+              console.log(stages_reached)
+            }
             else { return true; }
         }
     }
+
+    var reset_block = {
+      type: 'call-function',
+      func: function(){ 
+        money = 100000
+        timestep = 0
+        curr_stage = 0
+        most_recent_action = ""
+        most_recent_money = 0
+        condition = "realism"
+        transition_prob_scaling = condition_probs["realism"] 
+        money_points = []
+      }
+    };
 
     var live_run_chunk = {
         chunk_type: 'while',
         timeline: [prod0_phase],
         continue_function: function(){
             timestep +=1
-            if(curr_stage >= 3) {
+            if(timestep >= goal_timesteps[goal_timesteps.length-1]) {
               return false; 
             }
             else { return true; }
         }
+    }
+
+    var graph_block = {
+      type: 'call-function',
+      func: function(){
+        var ctx = document.getElementById("myChart").getContext("2d");
+        var data = {
+          labels: Array.apply(null, {length: last_timestep}).map(Number.call, Number),
+          datasets: [
+              {
+                  label: "Performance",
+                  fillColor: "rgba(220,220,220,0.2)",
+                  strokeColor: "rgba(220,220,220,1)",
+                  pointColor: "rgba(220,220,220,1)",
+                  pointStrokeColor: "#fff",
+                  pointHighlightFill: "#fff",
+                  pointHighlightStroke: "rgba(220,220,220,1)",
+                  data: money_points
+              },
+          ]
+        };
+        var myLineChart = new Chart(ctx).Line(data);
+      }
     }
 
     var debrief_block = {
@@ -124,6 +185,19 @@
         return "<p>Thank you for your time!</p>";
       }
     };
+
+    //Consent form
+    var check_consent = function(elem) {
+        if ($('#consent_checkbox').is(':checked')) {
+            return true;
+        }
+        else {
+            alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+            return false;
+        }
+        return false;
+    };        
+    var consent_form = {type:'html', pages: [{url: 'consent.html', cont_btn: "start",check_fn: check_consent}]};
 
     function getMostRecentKey(){
       var trials = jsPsych.data.getTrialsOfType('text');
@@ -139,14 +213,17 @@
     //Returns money for specific action
     function getMoney(){
       if(most_recent_action == "invest"){
-        var idx = Math.floor(Math.random() * product_stages[curr_stage].length)
-        curr_stage = product_stages[curr_stage][idx]; //updates current stage, with probability
-        most_recent_money = normal_random(-300, 20);
+        var random_num = Math.random() * transition_prob_scaling
+        if(random_num > product_stages[curr_stage]){ //updates current stage, with probability
+          if(curr_stage < num_stages){
+            curr_stage +=1
+          }
+        }
+        console.log(random_num)
+        most_recent_money = normal_random(invest_mean, invest_variance); //returns reward
       }
       if(most_recent_action == "market"){    //returns reward based on current stage of product
-        var mean = (curr_stage + 1) * 1000;
-        var variance = (curr_stage + 1) * 100;
-        most_recent_money = normal_random(mean, variance);
+        most_recent_money = normal_random(market_mean, market_variance);
       }
       return most_recent_money;
     }
@@ -154,6 +231,7 @@
     //Returns total amount of money after taking action
     function updateMoney(){
       money += most_recent_money
+      money_points.push(money)
       return money;
     }
 
@@ -177,39 +255,24 @@
       return Math.round(X);
     }
 
-    //Consent form
-    var check_consent = function(elem) {
-        if ($('#consent_checkbox').is(':checked')) {
-            return true;
-        }
-        else {
-            alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
-            return false;
-        }
-        return false;
-    };        
-    var consent_form = {type:'html', pages: [{url: 'consent.html', cont_btn: "start",check_fn: check_consent}]};
-
     // defining the experiment
     var experiment = [];
     //experiment.push(consent_form);
     experiment.push(phase1_instructions);
     // experiment.push(test_run_chunk);
+    // experiment.push(reset_block);
     // experiment.push(phase2_instructions);
     experiment.push(live_run_chunk);
+    experiment.push(graph_block);
     experiment.push(debrief_block);
 
     jsPsych.init({
       display_element: $('#jspsych-target'),
       experiment_structure: experiment,
-      //show_progress_bar: true,
-      // on_trial_finish: function(){
-      //   jsPsych.data.write(trial_data)
-      // },
-      on_finish: function() {
-        jsPsych.data.displayData();
-        var data_as_csv = jsPsych.data.dataAsCSV();
-      }
+      // on_finish: function() {
+      //   jsPsych.data.displayData();
+      //   var data_as_csv = jsPsych.data.dataAsCSV();
+      // }
     });
   </script>
 </html>
