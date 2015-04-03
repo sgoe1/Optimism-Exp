@@ -40,8 +40,8 @@
     var market_mean = (curr_stage + 1) * 1000;  //mean and variance for reward upon marketing - should be a function of curr_stage
     var market_variance = (curr_stage + 1) * 100;
     var test_timesteps = 5 //how many time steps 
-    var stages_reached = new Set()
     var internal_timesteps = Array.apply(null, new Array(num_stages)).map(Number.prototype.valueOf,0);
+    var test_timestep_tracker = 0
 
     var condition_probs = {"optimism": 1.1, "realism": 1, "pessimism": 0.9} //can adjust level of optimism and pessimism
     var transition_prob_scaling = condition_probs[condition] 
@@ -103,33 +103,52 @@
 
     };
 
+    var prod0_test_phase = {
+      type: "text",
+      text: function() {
+            var product_stage_message = ""
+            var original_stage = curr_stage
+            var gottenMoney = getMoney()
+            var updatedMoney = updateMoney()
+            if (actions[getMostRecentKey()] == 'invest'){
+              product_stage_message = "your product is now at stage " + curr_stage;
+            }
+            if (actions[getMostRecentKey()] == 'market'){
+              product_stage_message = "your product remains at stage " + curr_stage;
+            }
+            curr_stage = original_stage
+            return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>, and now " + product_stage_message + ".</p>" +
+            "<p>This returns a profit of $" + gottenMoney + ", for a current total of $" + updatedMoney + ".</p>" +
+            "<p>Product stage: "+ curr_stage+ "</p>" +
+            "<footer>Timestep: " + timestep +"</footer>";
+
+          },
+      cont_key: [73, 77],
+
+    };
+
     var test_run_chunk = {
         chunk_type: 'while',
-        timeline: [prod0_phase],
+        timeline: [prod0_test_phase],
         continue_function: function(){
-            stages_reached.add(curr_stage)
-            timestep += 1
-            internal_timesteps[curr_stage] +=1
-            if(timestep >= test_timesteps) {  //want to make sure participant has experienced every stage at least once
-              curr_stage+=1
-              // if(stages_reached.size < num_stages){
-              //   curr_stage +=1
-              //   if(internal_timestep < test_timesteps){
-              //     internal_timestep +=1
-              //   }
-              //   else{
-              //     curr_stage +=1
-              //     internal_timestep = 0
-              //   }
-              //   return true;
-              // }
-              return false; 
-              console.log(stages_reached)
+            if (curr_stage == num_stages-1 && test_timestep_tracker == test_timesteps){
+              return false;
             }
-            else { return true; }
+
+            else { 
+              if(test_timestep_tracker == test_timesteps){
+                test_timestep_tracker = 0
+                curr_stage += 1 
+              }else{
+                  test_timestep_tracker +=1
+              }
+              console.log(test_timestep_tracker)
+              return true; 
+            }
         }
     }
 
+    // resets all variables that were changed in the test run, for the actual run
     var reset_block = {
       type: 'call-function',
       func: function(){ 
@@ -219,7 +238,6 @@
             curr_stage +=1
           }
         }
-        console.log(random_num)
         most_recent_money = normal_random(invest_mean, invest_variance); //returns reward
       }
       if(most_recent_action == "market"){    //returns reward based on current stage of product
@@ -259,9 +277,9 @@
     var experiment = [];
     //experiment.push(consent_form);
     experiment.push(phase1_instructions);
-    // experiment.push(test_run_chunk);
-    // experiment.push(reset_block);
-    // experiment.push(phase2_instructions);
+    experiment.push(test_run_chunk);
+    experiment.push(reset_block);
+    experiment.push(phase2_instructions);
     experiment.push(live_run_chunk);
     experiment.push(graph_block);
     experiment.push(debrief_block);
