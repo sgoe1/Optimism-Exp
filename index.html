@@ -31,8 +31,7 @@
     var prod_a = "Product A"
     var prod_b = "Product B"
     var actions = {73: "invest", 77: "market"}
-    var product_stages = [0.6, 0.7, 0.7] //transition matrix - index is prod stage, prob is chance of remaining in curr stage
-    var num_stages = product_stages.length
+    var num_stages =  100 
     var goal_timestep = 12 //time horizon
     var init_money = money
     var invest_mean = -300    //mean and variance for reward upon investing
@@ -41,8 +40,11 @@
     var market_variance = 50;
     var big_mean = 1500       //mean and variance for reward if prod B at final stage
     var big_variance = 20
+    var bin_n = 100
+    var bin_p = 0.02
     var test_timesteps = 1 //how many time steps 
-    var test_timestep_tracker = 0 //internal timer, don't modify
+    var test_stage_tracker = [0, 33, 66]
+    var tracker_index = 0
     var money_points = [] //for graph display
 
     var condition = "pessimism" //you can have "optimism", "realism", or "pessimism" here
@@ -54,10 +56,11 @@
     var phase1_instructions = {
       type: "text",
       text: function(){
+        var bin_mean = bin_n * bin_p
         var initialized_data = {
           type: 'parameters',
           actions: actions,
-          product_stages: product_stages,
+          num_stages: num_stages,
           goal_timestep: goal_timestep,
           init_money: init_money,
           invest_mean: invest_mean,
@@ -66,6 +69,8 @@
           market_variance: market_variance,
           big_mean: big_mean,
           big_variance: big_variance,
+          bin_n: bin_n,
+          bin_p: bin_p,
           test_timesteps: test_timesteps,
           condition: primed_condition,
         }
@@ -74,10 +79,10 @@
       "is more lucrative than " + prod_a + " (higher profits). However, by choosing to invest in " + prod_b +
       " you lose money that month, but <i>potentially</i> make progress on " + prod_b + "'s development. Alternatively, "+
       " you can always choose to stall development of " + prod_b+ ", and just market " + prod_a + ", which you " +
-      "know will earn you profits.</p>" + "<p>Each month, you have to decide between marketing " + prod_a +
-      " and investing in " + prod_b + ", with the goal of maximizing your total money. To invest, press 'I', to market "+
-      "press 'M'.</p>" + "<p>In the first stage, you will become familiar with the scenario in a few 'test stages'. " +
-      "Once this is complete, you will proceed to the actual experiment. Press 'Enter' to proceed.</p>" + 
+      "know will earn you profits.</p>" + "<p>You are working over the course of " + goal_timestep + " months. The average return on marketing is $" + market_mean + ", while the average return on investing is $" + invest_mean + ". The average rate of development is " + bin_mean + "%. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + big_mean + "." + 
+      "<p>Each month, you have to decide between <b>marketing " + prod_a +
+      "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + goal_timestep + " months. To invest, press 'I', to market press 'M'.</p>" + "<p>In the first phase, you will become familiar with the scenario in " + test_stage_tracker.length + " 'test stages', each of which are " + test_timesteps + " months long. " +
+      "We encourage you to explore the effects of investing and marketing in this stage, so you can make smart decisions in the actual experiment.</p><p>Once this phase is complete, you will proceed to the actual experiment. Press 'Enter' to proceed.</p>" + 
       "<div style='display:none;'>" + jsPsych.data.write(initialized_data) + "</div>"
       },
       cont_key: [13],
@@ -98,6 +103,10 @@
       type: "text",
       text: function() {
             var product_stage_message = ""
+            var months_left = goal_timestep - timestep
+            var original_stage = curr_stage
+            getMostRecentKey()
+            var gottenMoney = getMoney()
             if (actions[getMostRecentKey()] == 'invest'){
               product_stage_message = prod_b + " is now " + howDeveloped() + "% developed";
             }
@@ -111,11 +120,9 @@
                 reward: most_recent_money,
             }
 
-            return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>.</p>" +
-            "<p>This returns a profit of $" + getMoney() + ", for a current total of $" + updateMoney() + ".</p>" +
-            "<p>"+ product_stage_message+ "</p>" +
-            "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>"+ //cleaner way to do this?
-            "<footer>Date: " + getMonthYear() +"</footer>";
+            return getMonthYear() + " - you have " + months_left + " months left." + "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decide to <b>"+ actions[getMostRecentKey()] + "</b>." + product_stage_message + "</p> " +
+            "<p>This returns a profit of $" + gottenMoney + ", for a current total of $" + updateMoney() + ".</p>" + "<p>Press I to invest, M to market</p>" +
+            "<div style='display:none;'>" +  jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
 
           },
       cont_key: [73, 77],
@@ -125,8 +132,9 @@
     var prod0_test_phase = {
       type: "text",
       text: function() {
-          return "<p>You currently have $" + money + " and your " + prod_b + " is %" + howDeveloped() + 
-          " developed. Would you like to invest or market?</p>"+ "<footer>Date: " + getMonthYear() +"</footer>";
+          var simulation = tracker_index +1
+          return getMonthYear() + " - simulation " + simulation + "/" + test_stage_tracker.length + "<p>You currently have $" + money + " and your " + prod_b + " is %" + howDeveloped() + 
+          " developed. Would you like to invest or market?</p>" + "<p>Press I to invest, M to market</p>";
 
           },
       cont_key: [73, 77],
@@ -137,16 +145,29 @@
       type: "text",
       text: function() {
             var product_stage_message = ""
+            var next_sim_msg = "Press enter to proceed."
             var original_stage = curr_stage
+            getMostRecentKey()
             var gottenMoney = getMoney()
             var updatedMoney = updateMoney()
             if (actions[getMostRecentKey()] == 'invest'){
               product_stage_message = prod_b + " is now " + howDeveloped() + "% developed.";
             }
-            curr_stage = original_stage //IMPORTANT: reset
-            return "<p>You decide to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
+            if(timestep == test_timesteps-1 && tracker_index != test_stage_tracker.length-1){
+              next_sim_msg =  "Press 'Enter' to proceed to next simulation."
+            }
+            var trial_data = {
+                type: 'test_experiment',
+                money: money,
+                timestep: timestep,
+                curr_stage: curr_stage,
+                action: most_recent_action,
+                reward: most_recent_money,
+            }
+            var new_stage = curr_stage
+            return prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decide to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
             "<p>This returns a profit of $" + gottenMoney + ", for a current total of $" + updatedMoney + ".</p>" +
-            "<p>Product stage: "+ curr_stage+ "</p>" + "Press 'Enter' to proceed to next simulation.";
+            next_sim_msg + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
       },
       cont_key: [13],
     };
@@ -155,18 +176,18 @@
         chunk_type: 'while',
         timeline: [prod0_test_phase, prod0_test_feedback],
         continue_function: function(){
-            if (curr_stage == num_stages-1 && test_timestep_tracker == test_timesteps-1){ //subtract by 1 because of start at 0
+            if (tracker_index == test_stage_tracker.length-1 && timestep == test_timesteps-1){ //subtract by 1 because of start at 0. Couldnt use curr_stage == test_stage_tracker[test_stage_tracker.length-1], because curr_stage is updated
               return false;
             }
 
             else { 
-              if(test_timestep_tracker == test_timesteps-1){
-                test_timestep_tracker = 0
-                curr_stage += 1 
+              if(timestep == test_timesteps-1){
+                timestep = 0
+                tracker_index+=1
+                curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
               }else{
-                  test_timestep_tracker +=1
+                  timestep +=1
               }
-              console.log(test_timestep_tracker)
               return true; 
             }
         }
@@ -254,15 +275,10 @@
 
     }
 
-    //Returns money for specific action
+    //Returns money for specific action - scales prob by condition (pess, opt, real)
     function getMoney(){
       if(most_recent_action == "invest"){
-        var random_num = Math.random() * transition_prob_scaling
-        if(random_num > product_stages[curr_stage]){ //updates current stage, with probability
-          if(curr_stage <= num_stages){
-            curr_stage +=1
-          }
-        }
+        curr_stage = Math.min(100, curr_stage + binomial(bin_n, bin_p*transition_prob_scaling))
         most_recent_money = normal_random(invest_mean, invest_variance); //returns reward
       }
       if(most_recent_action == "market"){    //returns reward based on current stage of product
@@ -290,8 +306,11 @@
       return month + " " + year
     }
 
-    function howDeveloped(){
-      return (curr_stage/num_stages * 100).toFixed(2)
+    function howDeveloped(a){
+      if (a == undefined){
+        a = curr_stage
+      }
+      return (a/num_stages * 100).toFixed(2)
     }
 
     //Returns normally distributed values
@@ -312,6 +331,17 @@
       X = Math.sqrt(-2 * Math.log(S) / S) * V1;
       X = mean + Math.sqrt(variance) * X;
       return Math.round(X);
+    }
+
+    //Returns sample from binomial distribution
+    function binomial(n, p){
+      var x = 0;
+      for(var i=0; i<n; i++){
+        if(Math.random() < p){
+          x++;
+        }
+      }
+      return x
     }
 
     // defining the experiment
