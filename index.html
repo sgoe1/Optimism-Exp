@@ -20,6 +20,7 @@
   </body>
   <script type="text/javascript">
 
+    // Note - some weirdness with naming conventions, but product->stages, test->simulations, experiment->phases
     // Dynamic variables - remember that any changes here need to also be reflected in test_run_block! (and also data.write)
     var money = 100000
     var timestep = 0
@@ -40,23 +41,23 @@
     var market_variance = 50;
     var big_mean = 1500       //mean and variance for reward if prod B at final stage
     var big_variance = 20
-    var bin_n = 100
+    var bin_n = 100         //transition prob
     var bin_p = 0.02
-    var test_timesteps = 1 //how many time steps 
+    var test_timesteps = 2 //how many time steps per test simulation
     var test_stage_tracker = [0, 33, 66]
     var tracker_index = 0
     var money_points = [] //for graph display
 
-    var condition = "pessimism" //you can have "optimism", "realism", or "pessimism" here
+    var condition = "optimism" //you can have "optimism", "realism", or "pessimism" here
     var condition_probs = {"optimism": 1.1, "realism": 1, "pessimism": 0.9} //can adjust level of optimism and pessimism
     var transition_prob_scaling = condition_probs[condition]
     var primed_condition = condition //
+    var bin_mean = bin_n * bin_p
 
     /* intial instructions, before test run */
     var phase1_instructions = {
       type: "text",
       text: function(){
-        var bin_mean = bin_n * bin_p
         var initialized_data = {
           type: 'parameters',
           actions: actions,
@@ -72,7 +73,8 @@
           bin_n: bin_n,
           bin_p: bin_p,
           test_timesteps: test_timesteps,
-          condition: primed_condition,
+          condition_probs: condition_probs,
+          condition: primed_condition
         }
       return "<p>You recently became product manager for your company, which currently sells " +
       "a product, " + prod_a + ". You are considering developing a new product, " + prod_b +" , which " +
@@ -81,20 +83,20 @@
       " you can always choose to stall development of " + prod_b+ ", and just market " + prod_a + ", which you " +
       "know will earn you profits.</p>" + "<p>You are working over the course of " + goal_timestep + " months. The average return on marketing is $" + market_mean + ", while the average return on investing is $" + invest_mean + ". The average rate of development is " + bin_mean + "%. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + big_mean + "." + 
       "<p>Each month, you have to decide between <b>marketing " + prod_a +
-      "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + goal_timestep + " months. To invest, press 'I', to market press 'M'.</p>" + "<p>In the first phase, you will become familiar with the scenario in " + test_stage_tracker.length + " 'test stages', each of which are " + test_timesteps + " months long. " +
-      "We encourage you to explore the effects of investing and marketing in this stage, so you can make smart decisions in the actual experiment.</p><p>Once this phase is complete, you will proceed to the actual experiment. Press 'Enter' to proceed.</p>" + 
+      "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + goal_timestep + " months. To invest, press 'I', to market press 'M'.</p>" + "<p>In the first phase, you will become familiar with the scenario in " + test_stage_tracker.length + " 'test simulations', each of which are " + test_timesteps + " months long. " +
+      "We encourage you to explore the effects of investing and marketing in this phase, so you can make smart decisions in the actual experiment.</p><p>Once this phase is complete, you will proceed to the actual experiment. Press 'Enter' to proceed.</p>" + 
       "<div style='display:none;'>" + jsPsych.data.write(initialized_data) + "</div>"
       },
       cont_key: [13],
-      //timing_post_trial: 2000
     };
 
     /* instructions before actual experiment */
     var phase2_instructions = {
       type: "text",
-      text: "<p>Now that you have understood the experiment, " +
-            "proceed to the actual experiment (phase 2) by investing (I) or marketing (M).</p>" +
-            "<p>Again, you begin with $" + money +".</p>",
+      text: "<p>You have completed the 'test simulations' and are now ready for the actual experiment. " +
+            "Everything is reset - your money is $" + money +  ", your " + prod_b + " is %0 developed, and you will be working over the course of " + goal_timestep+ " months. And to reiterate some details from before, </p>" +
+              "The average return on marketing is $" + market_mean + ", while the average return on investing is $" + invest_mean + ". The average rate of development is " + bin_mean + "%. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + big_mean + "." + 
+            "<p>Proceed to the actual experiment (phase 2) by investing (I) or marketing (M). You begin with $" + money +".</p>",
       cont_key: [73, 77],
       //timing_post_trial: 2000
     };
@@ -110,7 +112,6 @@
             if (actions[getMostRecentKey()] == 'invest'){
               product_stage_message = prod_b + " is now " + howDeveloped() + "% developed";
             }
-            
             var trial_data = {
                 type: 'real_experiment',
                 money: money,
@@ -119,14 +120,12 @@
                 action: most_recent_action,
                 reward: most_recent_money,
             }
-
-            return getMonthYear() + " - you have " + months_left + " months left." + "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decide to <b>"+ actions[getMostRecentKey()] + "</b>." + product_stage_message + "</p> " +
+            return getMonthYear() + " - you have " + months_left + " months left." + "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p> " +
             "<p>This returns a profit of $" + gottenMoney + ", for a current total of $" + updateMoney() + ".</p>" + "<p>Press I to invest, M to market</p>" +
             "<div style='display:none;'>" +  jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
 
           },
       cont_key: [73, 77],
-
     };
 
     var prod0_test_phase = {
@@ -138,7 +137,6 @@
 
           },
       cont_key: [73, 77],
-
     };
 
     var prod0_test_feedback = {
@@ -165,7 +163,7 @@
                 reward: most_recent_money,
             }
             var new_stage = curr_stage
-            return prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decide to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
+            return prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
             "<p>This returns a profit of $" + gottenMoney + ", for a current total of $" + updatedMoney + ".</p>" +
             next_sim_msg + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
       },
@@ -278,7 +276,8 @@
     //Returns money for specific action - scales prob by condition (pess, opt, real)
     function getMoney(){
       if(most_recent_action == "invest"){
-        curr_stage = Math.min(100, curr_stage + binomial(bin_n, bin_p*transition_prob_scaling))
+        var scaled_prob = bin_p * transition_prob_scaling
+        curr_stage = Math.min(100, curr_stage + binomial(bin_n, scaled_prob))
         most_recent_money = normal_random(invest_mean, invest_variance); //returns reward
       }
       if(most_recent_action == "market"){    //returns reward based on current stage of product
