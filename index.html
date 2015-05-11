@@ -5,6 +5,7 @@
     <meta name="author" content="Sidharth Goel">
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script src="js/jspsych.js"></script>
+    <script src="js/mmturkey.js"></script>
     <script src="js/plugins/jspsych-text.js"></script>
     <script src="js/plugins/jspsych-call-function.js"></script>
     <script src="js/plugins/jspsych-html.js"></script>
@@ -447,10 +448,9 @@
     jsPsych.init({
       display_element: $('#jspsych-target'),
       experiment_structure: experiment,
-      // on_finish: function() {
-      //   jsPsych.data.displayData();
-      //   var data_as_csv = jsPsych.data.dataAsCSV();
-      // }
+      on_finish: function(data) {
+        turk.submit(data, true)
+      }
     });
   </script>
 </html>
