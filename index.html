@@ -33,11 +33,11 @@
     var goal_timestep //time horizon
     var init_money = money
     var invest_mean = -15000    //mean and variance for reward upon investing
-    var invest_variance = (0.1 * invest_mean)*-1
+    var invest_variance = (0.01 * Math.pow(invest_mean,2))
     var market_mean = 10000;  //mean and variance for reward upon marketing
-    var market_variance = 0.1 * market_mean
+    var market_variance = (0.01 * Math.pow(market_mean,2))
     var big_mean = 135000       //mean and variance for reward if prod B at final stage
-    var big_variance = 0.1 * big_mean
+    var big_variance = (0.01 * Math.pow(big_mean,2))
     var bin_n = 100         //transition prob
     var bin_p
     var test_timesteps = 10 //how many time steps per test simulation
