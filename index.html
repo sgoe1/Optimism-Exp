@@ -72,6 +72,12 @@
                       "*average monthly reward for investing " +prod_b +": " + invest_mean + "<br>"+
                       "*average monthly reward for marketing " +prod_b +" (if it reaches 100% development): " + big_mean + "</small>"
 
+    var phase1_intro = {
+      type: "text",
+      text: "<p>You will be playing a game called Product Manager.</p>" + "<p>Please press 'Enter' to begin.</p>",
+      cont_key: [13]
+    }
+
     /* intial instructions, before test run */
     var phase1_instructions = {
       type: "text",
@@ -119,7 +125,7 @@
     // Intro blocks split into two parts (reduce amt of text)
     var phase1_intro_blocks = {
       chunk_type: 'linear',
-      timeline: [phase1_instructions, phase1_info_1, phase1_info_2]
+      timeline: [phase1_intro, phase1_instructions, phase1_info_1, phase1_info_2]
     }
 
     var quiz_error = 0
@@ -265,6 +271,7 @@
                 timestep = 0
                 tracker_index+=1
                 curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
+                money = init_money
               }else{
                   timestep +=1
               }
