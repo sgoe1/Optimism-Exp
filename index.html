@@ -144,7 +144,7 @@
           quiz_error_message = "<p><h3>It looks like you didn't answer the questions correctly. Please review the information below</h3></p>"
         }
         return quiz_error_message + "<p>You have completed the 'training simulations' and are almost ready to start the game. But before that, recall the following information from earlier: </p>" +
-          "The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + numberWithCommas(big_mean) + "." +
+          "The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + numberWithCommas(big_mean) + ". <p>Your bonus will be proportional to the company's profit over the course of the X months. For example: If you earn the profit expected under the best possible course of action, then your bonus will be $2. If you earn half of that profit, then your bonus will be $1. Etc.</p>" +
         "<p>Press 'Enter' to proceed.</p>" },
       cont_key: [13],
       //timing_post_trial: 2000
@@ -216,51 +216,49 @@
     var prod0_test_phase = {
       type: "text",
       text: function() {
+          var product_stage_message = ""
+          var months_left = test_timesteps - timestep
+          //var next_sim_msg = "Press enter to proceed."
+          var original_stage = curr_stage
+          getMostRecentKey()
+          var gottenMoney = getMoney()
+          var updatedMoney = updateMoney()
+          if (actions[getMostRecentKey()] == 'invest'){
+            product_stage_message = prod_b + " is now " + howDeveloped() + "% developed.";
+          }
+          if(actions[getMostRecentKey()] == 'market'){
+            product_stage_message = prod_b + " remains " + howDeveloped() + "% developed (unchanged).";
+          }
+          // if(timestep == test_timesteps-1 && tracker_index != test_stage_tracker.length-1){ //subtle
+          //   next_sim_msg =  "Press 'Enter' to proceed to next simulation."
+          // }
+          var trial_data = {
+              type: 'test_experiment',
+              money: money,
+              timestep: timestep,
+              curr_stage: curr_stage,
+              action: most_recent_action,
+              reward: most_recent_money,
+          }
+          var new_stage = curr_stage
           var simulation = tracker_index +1
-          return "<h3>" + getMonthYear() + " - simulation " + simulation + "/" + test_stage_tracker.length + "</h3><p>You currently have $" + numberWithCommas(money) + " and your " + prod_b + " is " + howDeveloped() +
-          "% developed. Would you like to invest or market?</p>" + i_or_m();
 
+          var main_message = "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
+          "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updatedMoney) + ".</p>"
+          if(timestep == 0){
+            money = init_money
+            main_message = "<p>" + prod_b + " is currently " + howDeveloped(original_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
+          }
+
+          return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Would you like to invest or market?" + i_or_m() + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
           },
       cont_key: [73, 77],
     };
 
-    var prod0_test_feedback = {
-      type: "text",
-      text: function() {
-            var product_stage_message = ""
-            var next_sim_msg = "Press enter to proceed."
-            var original_stage = curr_stage
-            getMostRecentKey()
-            var gottenMoney = getMoney()
-            var updatedMoney = updateMoney()
-            if (actions[getMostRecentKey()] == 'invest'){
-              product_stage_message = prod_b + " is now " + howDeveloped() + "% developed.";
-            }
-            if(actions[getMostRecentKey()] == 'market'){
-              product_stage_message = prod_b + " remains " + howDeveloped() + "% developed (unchanged).";
-            }
-            if(timestep == test_timesteps-1 && tracker_index != test_stage_tracker.length-1){ //subtle
-              next_sim_msg =  "Press 'Enter' to proceed to next simulation."
-            }
-            var trial_data = {
-                type: 'test_experiment',
-                money: money,
-                timestep: timestep,
-                curr_stage: curr_stage,
-                action: most_recent_action,
-                reward: most_recent_money,
-            }
-            var new_stage = curr_stage
-            return prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
-            "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updatedMoney) + ".</p>" +
-            next_sim_msg + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
-      },
-      cont_key: [13],
-    };
 
     var test_run_chunk = {
         chunk_type: 'while',
-        timeline: [prod0_test_phase, prod0_test_feedback],
+        timeline: [prod0_test_phase],
         continue_function: function(){
             if (tracker_index == test_stage_tracker.length-1 && timestep == test_timesteps-1){ //subtract by 1 because of start at 0. Couldnt use curr_stage == test_stage_tracker[test_stage_tracker.length-1], because curr_stage is updated
               return false;
@@ -271,7 +269,6 @@
                 timestep = 0
                 tracker_index+=1
                 curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
-                money = init_money
               }else{
                   timestep +=1
               }
