@@ -125,7 +125,7 @@
     // Intro blocks split into two parts (reduce amt of text)
     var phase1_intro_blocks = {
       chunk_type: 'linear',
-      timeline: [phase1_intro, phase1_instructions, phase1_info_1, phase1_info_2]
+      timeline: [phase1_intro, phase1_instructions, phase1_info_1]
     }
 
     var quiz_error = 0
@@ -441,10 +441,10 @@
     var experiment = [];
     experiment.push(consent_form);
     experiment.push(phase1_intro_blocks);
-    experiment.push(test_run_chunk);
-    experiment.push(reset_block);
-    experiment.push(phase_2_intro_chunk);
-    experiment.push(prod2_correct_answer);
+    // experiment.push(test_run_chunk);
+    // experiment.push(reset_block);
+    // experiment.push(phase_2_intro_chunk);
+    // experiment.push(prod2_correct_answer); and remove phase1_info_2
     experiment.push(live_start);
     experiment.push(live_run_chunk);
     experiment.push(debrief_block);
