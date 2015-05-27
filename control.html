@@ -110,15 +110,8 @@
 
     var phase1_info_1 = {
       type: "text",
-      text: "<p>You are working over the course of " + goal_timestep + " months. Each month, you have to decide between <b>marketing " + prod_a + "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + goal_timestep + " months. To <b>i</b>nvest, press <b>'I'</b>, to market press <b>'M'</b>. If you decide to invest in a given month you will lose money that month, but the company will <i>potentially</i> make progress on " + prod_b+  ". Alternatively, you can choose to stall development of " + prod_b + " for a month, and instead market " + prod_a + ", which you know will earn you profits.</p>" +
-      "<p> The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete the development of " + prod_b + ", then the company will be able to make a much larger profit of $" + numberWithCommas(big_mean) + "/month.</p>" + "<p>Press 'Enter' to proceed.</p>",
-      cont_key: [13]
-    }
-
-    var phase1_info_2 = {
-      type: "text",
-      text: "<p>In the first phase, you will become familiar with the scenario in " + test_stage_tracker.length + " 'test simulations', each of which is " + test_timesteps + " months long. " +
-      "We encourage you to explore the effects of investing and marketing in this phase, so you can make smart decisions in the actual game. In this first phase, you're just learning how the games works - the fictitious money you make here does not affect your bonus. </p><p>Once this phase is complete, you will proceed to the actual game. Press 'Enter' to proceed.</p>",
+      text: "<p>You will work through "+test_stage_tracker.length +" simulations, each " + test_timesteps + " months long. Each month, you have to decide between <b>marketing " + prod_a + "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + test_timesteps + " months. To <b>i</b>nvest, press <b>'I'</b>, to market press <b>'M'</b>. If you decide to invest in a given month you will lose money that month, but the company will <i>potentially</i> make progress on " + prod_b+  ". Alternatively, you can choose to stall development of " + prod_b + " for a month, and instead market " + prod_a + ", which you know will earn you profits.</p>" +
+      "<p> The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete the development of " + prod_b + ", then the company will be able to make a much larger profit of $" + numberWithCommas(big_mean) + "/month.</p>" + "<p>We encourage you to explore the effects of investing and marketing in this phase, so you can make smart decisions in the actual game. In this first phase, you're just learning how the games works - the fictitious money you make here does not affect your bonus. </p><p>Once this phase is complete, you will proceed to the actual game. Press 'Enter' to proceed.</p>" + "<p>Press 'Enter' to proceed.</p>",
       cont_key: [13]
     }
 
@@ -317,7 +310,7 @@
         }
     }
 
-    var final_page_quiz = function(){ return ["<p>Thank you for your time! In the course of " + goal_timestep + " months, you went from $" + numberWithCommas(init_money) +" to $" + numberWithCommas(money) + ".</p> Based on your experience, what do you estimate is the monthly percent development in " + prod_b + " when you choose to invest (enter just a number)?", "What about the monthly percent development in " + prod_b + " when you choose not to invest (enter just a number)?"] }
+    var final_page_quiz = function(){ return ["<p>Thank you for your time! .</p> Based on your experience, what do you estimate is the monthly percent development in " + prod_b + " when you choose to invest (enter just a number)?", "What about the monthly percent development in " + prod_b + " when you choose not to invest (enter just a number)?"] }
 
     var debrief_block = {
       type: "survey-text",
@@ -335,7 +328,7 @@
         }
         return false;
     };
-    var consent_form = {type:'html', pages: [{url: 'consent.html', cont_btn: "start",check_fn: check_consent}]};
+    var consent_form = {type:'html', pages: [{url: 'control_consent.html', cont_btn: "start",check_fn: check_consent}]};
 
     function getMostRecentKey(){
       var trials = jsPsych.data.getTrialsOfType('text');
@@ -441,12 +434,12 @@
     var experiment = [];
     experiment.push(consent_form);
     experiment.push(phase1_intro_blocks);
-    // experiment.push(test_run_chunk);
+    experiment.push(test_run_chunk);
     // experiment.push(reset_block);
     // experiment.push(phase_2_intro_chunk);
-    // experiment.push(prod2_correct_answer); and remove phase1_info_2
-    experiment.push(live_start);
-    experiment.push(live_run_chunk);
+    // experiment.push(prod2_correct_answer);
+    // experiment.push(live_start);
+    // experiment.push(live_run_chunk);
     experiment.push(debrief_block);
 
     jsPsych.init({
