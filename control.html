@@ -57,7 +57,7 @@
     bin_p = 1/(0.8 * goal_timestep)
 
     var condition //you can have "optimism", "realism", or "pessimism" here
-    var condition_probs = {"optimism": 1.3, "realism": 1, "pessimism": 0.7} //can adjust level of optimism and pessimism
+    var condition_probs = {"optimism": 2.0, "realism": 1, "pessimism": 0.5} //can adjust level of optimism and pessimism
     var transition_prob_scaling = condition_probs[condition]
     var primed_condition = condition //
 
