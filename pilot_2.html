@@ -44,7 +44,7 @@
     var test_stage_tracker = []
     var num_test_stages = 10
     for (i=0; i < num_test_stages; i++){
-      test_stage_tracker.push(Math.floor(num_stages/num_test_stages*i))
+      test_stage_tracker.push(10/num_test_stages*i)
     }
 
     var tracker_index = 0
@@ -246,6 +246,10 @@
             main_message = "<p>" + prod_b + " is currently " + howDeveloped(original_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
           }
 
+          if(timestep == test_timesteps){
+            return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Press <b>I</b> or <b>M</b> to start the next simulation." + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
+          }
+
           return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Would you like to invest or market?" + i_or_m() + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
           },
       cont_key: [73, 77],
@@ -261,7 +265,7 @@
             }
 
             else {
-              if(timestep == test_timesteps-1){
+              if(timestep == test_timesteps){
                 timestep = 0
                 tracker_index+=1
                 curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
