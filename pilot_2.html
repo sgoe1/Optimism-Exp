@@ -54,7 +54,7 @@
     goal_timestep = possible_timesteps[Math.floor(Math.random() * possible_timesteps.length)];
 
     // Randomly select condition
-    possible_conditions = ["optimism", "pessimism", "realism"]
+    possible_conditions = ["realism"]
     condition = possible_conditions[Math.floor(Math.random() * possible_conditions.length)];
 
     bin_p = 0.45
@@ -236,13 +236,13 @@
               action: most_recent_action,
               reward: most_recent_money,
           }
-          var new_stage = curr_stage
           var simulation = tracker_index +1
 
           var main_message = "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
           "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updatedMoney) + ".</p>"
           if(timestep == 0){
             money = init_money
+            curr_stage = test_stage_tracker[tracker_index] //OVERRIDES THE RESULT OF getMoney()
             main_message = "<p>" + prod_b + " is currently " + howDeveloped(original_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
           }
 
