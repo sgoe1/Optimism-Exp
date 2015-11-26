@@ -40,10 +40,10 @@
     var big_variance = (0.01 * Math.pow(big_mean,2))
     var bin_n = 100         //transition prob
     var bin_p
-    var test_timesteps = 10 //how many time steps per test simulation
-    var test_stage_tracker = [0]
-        test_stage_tracker.push(Math.floor(num_stages/3)) //33%
-        test_stage_tracker.push(Math.floor(2*num_stages/3)) //66%
+    var test_timesteps = 3 //how many time steps per test simulation
+    var test_stage_tracker = []
+    var num_test_stages = 20
+    // See below for other test_stage related things
     var tracker_index = 0
 
     // Randomly select # of timesteps
@@ -57,9 +57,15 @@
     bin_p = 1/(0.8 * goal_timestep)
 
     var condition //you can have "optimism", "realism", or "pessimism" here
-    var condition_probs = {"optimism": 2.0, "realism": 1, "pessimism": 0.5} //can adjust level of optimism and pessimism
+    var condition_probs = {"optimism": 0.8/bin_p, "realism": 1, "pessimism": 0.5} //can adjust level of optimism and pessimism
     var transition_prob_scaling = condition_probs[condition]
     var primed_condition = condition //
+
+    var max_starting_val = (1 - 1.1*bin_p*transition_prob_scaling)*100 // min is 0 (we want to start sims at unif intervals from 0 to this)
+    for (i=0; i < num_test_stages; i++){
+      test_stage_tracker.push(i/num_test_stages *max_starting_val)
+    }
+    shuffleArray(test_stage_tracker)
 
     function i_or_m(){
       if(curr_stage == num_stages){
@@ -240,14 +246,18 @@
               action: most_recent_action,
               reward: most_recent_money,
           }
-          var new_stage = curr_stage
           var simulation = tracker_index +1
 
           var main_message = "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
           "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updatedMoney) + ".</p>"
           if(timestep == 0){
             money = init_money
+            curr_stage = test_stage_tracker[tracker_index] //OVERRIDES THE RESULT OF getMoney()
             main_message = "<p>" + prod_b + " is currently " + howDeveloped(original_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
+          }
+
+          if(timestep == test_timesteps){
+            return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Press <b>I</b> or <b>M</b> to start the next simulation." + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
           }
 
           return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Would you like to invest or market?" + i_or_m() + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
@@ -265,7 +275,7 @@
             }
 
             else {
-              if(timestep == test_timesteps-1){
+              if(timestep == test_timesteps){
                 timestep = 0
                 tracker_index+=1
                 curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
@@ -400,6 +410,16 @@
         }
       }
       return true;
+    }
+
+    function shuffleArray(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+        return array;
     }
 
     //Returns normally distributed values
