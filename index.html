@@ -253,7 +253,7 @@
           if(timestep == 0){
             money = init_money
             curr_stage = test_stage_tracker[tracker_index] //OVERRIDES THE RESULT OF getMoney()
-            main_message = "<p>" + prod_b + " is currently " + howDeveloped(original_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
+            main_message = "<p>" + prod_b + " is currently " + howDeveloped(curr_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
           }
 
           if(timestep == test_timesteps){
@@ -270,7 +270,7 @@
         chunk_type: 'while',
         timeline: [prod0_test_phase],
         continue_function: function(){
-            if (tracker_index == test_stage_tracker.length-1 && timestep == test_timesteps-1){ //subtract by 1 because of start at 0. Couldnt use curr_stage == test_stage_tracker[test_stage_tracker.length-1], because curr_stage is updated
+            if (tracker_index == test_stage_tracker.length-1 && timestep == test_timesteps){ //subtract by 1 because of start at 0. Couldnt use curr_stage == test_stage_tracker[test_stage_tracker.length-1], because curr_stage is updated
               return false;
             }
 
