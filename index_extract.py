@@ -73,27 +73,10 @@ with open('index_extract.csv', 'wb') as csvfile:
 
             try:
                 if (0 <= int(ans1) <= 100) and (0 <= int(ans2) <= 100):
-                    # ans1, ans2, true_rate parsed correctly - !! fix parsing of decimal answers
-                    # print 'ans1 is ' + ans1 + ' ans2 is ' + ans2 + 'and true rate is ' + str(true_rate)
-                    means[condition][0] += (float(ans1) - true_rate*condition_probs[condition])
-                    means[condition][1] += (float(ans2) - 0)
-                    counter[condition]+=1
-                    stds[condition][0].append(float(ans1) - true_rate*condition_probs[condition])
-                    stds[condition][1].append(float(ans2) - 0)
 
-                    m = (condition, time_horizon, true_rate, condition_probs[condition])
-                    if m not in means_horzn:
-                        means_horzn[m] = float(ans1)
-                        counter_horzn[m] = 1
-                    else:
-                        means_horzn[m] += float(ans1)
-                        counter_horzn[m] += 1
-
-                    cleanedwriter.writerow([participant, assignment_id, completion_time, condition, time_horizon, num_invest, final_rate_of_dev,
-                                            money_at_end, q0, q1, bonus_dollars])
-
+                    cleanedwriter.writerow([participant, assignment_id, completion_time, condition, time_horizon, num_invest,
+                                            final_rate_of_dev, money_at_end, q0, q1, bonus_dollars])
                 else:
                     print 'Skipped ' + q0  + ' and ' + q1
             except:
                 print 'Skipped ' + q0  + ' and ' + q1
-                #pass
