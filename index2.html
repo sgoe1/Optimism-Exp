@@ -1,0 +1,480 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Product Manager</title>
+    <meta name="author" content="Sidharth Goel">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/jspsych.js"></script>
+    <script src="js/mmturkey.js"></script>
+    <script src="js/plugins/jspsych-text.js"></script>
+    <script src="js/plugins/jspsych-call-function.js"></script>
+    <script src="js/plugins/jspsych-html.js"></script>
+    <script src="js/plugins/jspsych-survey-text.js"></script>
+    <link href="css/jspsych.css" rel="stylesheet" type="text/css"></link>
+  </head>
+  <body>
+          <div id='jspsych-target'></div>
+  </body>
+  <script type="text/javascript">
+
+    // Note - some weirdness with naming conventions, but product->stages, test->simulations, experiment->phases
+    // Dynamic variables - remember that any changes here need to also be reflected in test_run_block! (and also data.write)
+    var money = 1000000
+    var timestep = 0
+    var curr_stage = 0
+    var most_recent_action = ""
+    var most_recent_money = 0
+
+    // Static variables
+    var prod_a = "<i>SportsCar</i>"
+    var prod_b = "<i>HoverCar</i>"
+    var actions = {73: "invest", 77: "market"}
+    var num_stages =  100
+    var goal_timestep //time horizon
+    var init_money = money
+    var invest_mean = -15000    //mean and variance for reward upon investing
+    var invest_variance = (0.01 * Math.pow(invest_mean,2))
+    var market_mean = 10000;  //mean and variance for reward upon marketing
+    var market_variance = (0.01 * Math.pow(market_mean,2))
+    var big_mean = 135000       //mean and variance for reward if prod B at final stage
+    var big_variance = (0.01 * Math.pow(big_mean,2))
+    var bin_n = 100         //transition prob
+    var bin_p
+    var test_timesteps = 3 //how many time steps per test simulation
+    var test_stage_tracker = []
+    var num_test_stages = 20
+    // See below for other test_stage related things
+    var tracker_index = 0
+
+    // Randomly select # of timesteps
+    possible_timesteps = [5] //[4, 12, 24, 72]
+    goal_timestep = possible_timesteps[Math.floor(Math.random() * possible_timesteps.length)];
+
+    // Randomly select condition
+    possible_conditions = ["optimism", "pessimism", "realism"]
+    condition = possible_conditions[Math.floor(Math.random() * possible_conditions.length)];
+
+    bin_p = 1/(0.8 * (goal_timestep-1))
+
+    var condition //you can have "optimism", "realism", or "pessimism" here
+    var condition_probs = {"optimism": 0.8/bin_p, "realism": 1, "pessimism": 0.5} //can adjust level of optimism and pessimism
+    var transition_prob_scaling = condition_probs[condition]
+    var primed_condition = condition //
+
+    var max_starting_val = (1 - 1.1*bin_p*transition_prob_scaling)*100 // min is 0 (we want to start sims at unif intervals from 0 to this)
+    for (i=0; i < num_test_stages; i++){
+      test_stage_tracker.push(i/num_test_stages *max_starting_val)
+    }
+    shuffleArray(test_stage_tracker)
+
+    function i_or_m(){
+      if(curr_stage == num_stages){
+        return"<p>Press <b>M</b> to <b>m</b>arket " + prod_b + "</p>"
+      }
+      return "<p>Press <b>I</b> to <b>i</b>nvest in " + prod_b + "<br> Press <b>M</b> to <b>m</b>arket " + prod_a + "</p>"
+    }
+
+    var reward_info = "<small>*average monthly reward for marketing " +prod_a+": " + market_mean +"<br>" +
+                      "*average monthly reward for investing " +prod_b +": " + invest_mean + "<br>"+
+                      "*average monthly reward for marketing " +prod_b +" (if it reaches 100% development): " + big_mean + "</small>"
+
+    var phase1_intro = {
+      type: "text",
+      text: "<p>You will be playing a game called Product Manager.</p>" + "<p>Please press 'Enter' to begin.</p>",
+      cont_key: [13]
+    }
+
+    /* intial instructions, before test run */
+    var phase1_instructions = {
+      type: "text",
+      text: function(){
+        var initialized_data = {
+          type: 'parameters',
+          actions: actions,
+          num_stages: num_stages,
+          goal_timestep: goal_timestep,
+          init_money: init_money,
+          invest_mean: invest_mean,
+          invest_variance: invest_variance,
+          market_mean: market_mean,
+          market_variance: market_variance,
+          big_mean: big_mean,
+          big_variance: big_variance,
+          bin_n: bin_n,
+          bin_p: bin_p,
+          test_timesteps: test_timesteps,
+          condition_probs: condition_probs,
+          condition: primed_condition,
+          bonus_rate: 2/((0.8 * invest_mean + 0.2*big_mean)*goal_timestep)
+        }
+      return "<p>Congratulations! You have been promoted to be your company's product manager. The company currently sells one product, " + prod_a + ", and is considering developing a new product, " + prod_b +", which " +
+      "is more lucrative than " + prod_a + " (higher profits).</p>" + "<p>Press 'Enter' to proceed.</p>" +
+      "<div style='display:none;'>" + jsPsych.data.write(initialized_data) + "</div>"
+      },
+      cont_key: [13],
+    };
+
+    var phase1_info_1 = {
+      type: "text",
+      text: "<p>You are working over the course of " + goal_timestep + " months. Each month, you have to decide between <b>marketing " + prod_a + "</b> and <b>investing in " + prod_b + "</b>, with the goal of maximizing your total money by the end of the " + goal_timestep + " months. To <b>i</b>nvest, press <b>'I'</b>, to market press <b>'M'</b>. If you decide to invest in a given month you will lose money that month, but the company will <i>potentially</i> make progress on " + prod_b+  ". Alternatively, you can choose to stall development of " + prod_b + " for a month, and instead market " + prod_a + ", which you know will earn you profits.</p>" +
+      "<p> The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete the development of " + prod_b + ", then the company will be able to make a much larger profit of $" + numberWithCommas(big_mean) + "/month.</p>" + "<p>Press 'Enter' to proceed.</p>",
+      cont_key: [13]
+    }
+
+    var phase1_info_2 = {
+      type: "text",
+      text: "<p>In the first phase, you will become familiar with the scenario in " + test_stage_tracker.length + " 'test simulations', each of which is " + test_timesteps + " months long. " +
+      "We encourage you to explore the effects of investing and marketing multiple times because their effects are stochastic. In this first phase, you're just learning how the games works - the fictitious money you make here does not affect your bonus. </p> <p>Once this phase is complete, you will proceed to the actual game. Press 'Enter' to proceed.</p>",
+      cont_key: [13]
+    }
+
+    // Intro blocks split into two parts (reduce amt of text)
+    var phase1_intro_blocks = {
+      chunk_type: 'linear',
+      timeline: [phase1_intro, phase1_instructions, phase1_info_1, phase1_info_2]
+    }
+
+    var quiz_error = 0
+    var quiz_error_message = ""
+    var phase_2_questions = ["Enter the number for each of the answers below (no commas, dollar signs, etc.)<br>What is the average monthly reward for marketing " +prod_a+"?", "What is the average monthly reward for investing " +prod_b +"? (Hint: negative!)", "If " + prod_b + " reaches 100% development, what is its average monthly reward?"]
+
+    var phase_2_quiz = {
+      type: "survey-text",
+      questions: [phase_2_questions],
+    };
+
+    var phase2_instructions = {
+      type: "text",
+      text: function(){
+        if(quiz_error > 0){
+          quiz_error_message = "<p><h3>It looks like you didn't answer the questions correctly. Please review the information below</h3></p>"
+        }
+        return quiz_error_message + "<p>You have completed the 'training simulations' and are almost ready to start the game. But before that, recall the following information from earlier: </p>" +
+          "The average return on marketing is $" + numberWithCommas(market_mean) + "/month, while the average return on investing is $" + numberWithCommas(invest_mean) + "/month. If you complete " + prod_b + " to 100% development, then you can market it for an average of $" + numberWithCommas(big_mean) + ". <p>Your bonus will be proportional to the company's profit over the course of the " + goal_timestep + " months. For example: If you earn the profit expected under the best possible course of action, then your bonus will be $2. If you earn half of that profit, then your bonus will be $1. Etc.</p>" +
+        "<p>Press 'Enter' to proceed.</p>" },
+      cont_key: [13],
+      //timing_post_trial: 2000
+    };
+
+    /* Correct answer and initial instructions before actual experiment */
+    var prod2_correct_answer = {
+      type: "text",
+      text: "<h3>Get ready!</h3><p>Correct! You're now ready to play for real. The bonus you receive will be proportional to the fictitious amount money you make in this game.</p> " +
+            "<p>You will play " + goal_timestep + " rounds (" + getMonthYear() + ",..." + getMonthYear(goal_timestep) + "). Your start capital is $" + numberWithCommas(money) +  ", and your goal is to maximize the amount of money you have in " + getMonthYear(goal_timestep) + ".</p><p>Press enter to continue.</p>",
+      cont_key: [13],
+    };
+
+    // Special screen for initial actual stage
+    var live_start = {
+      type: "text",
+      text:  function(){
+            var months_left = goal_timestep - timestep
+            var trial_data = {
+                type: 'real_experiment',
+                money: money,
+                timestep: timestep,
+                curr_stage: curr_stage,
+                action: most_recent_action,
+                reward: most_recent_money,
+            }
+            monthyear = getMonthYear() //hacky
+            timestep +=1
+            return "<h3>"+ monthyear + " - you have " + months_left + " months left.</h3><p>" + prod_b + " is 0% developed.</p>" + i_or_m() + reward_info +
+            "<div style='display:none;'>" +  jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
+        },
+      cont_key: [73, 77],
+    }
+
+    var prod0_phase = {
+      type: "text",
+      text: function() {
+            var product_stage_message = ""
+            var months_left = goal_timestep - timestep
+            var original_stage = curr_stage
+            getMostRecentKey()
+            var gottenMoney = getMoney()
+            var congrats_message = ""
+            if (actions[getMostRecentKey()] == 'invest'){
+              product_stage_message = prod_b + " is now " + howDeveloped() + "% developed";
+              if (curr_stage == num_stages && original_stage != curr_stage){  //special message for reaching 100% completion
+                congrats_message = "<h3 style=\"color:green\">Wow, " + prod_b + " reached 100% completion! No need to invest in it anymore, time to market it and make some money!</h3>"
+              }
+            }
+            if(actions[getMostRecentKey()] == 'market'){
+              product_stage_message = prod_b + " remains " + howDeveloped() + "% developed (unchanged).";
+            }
+            var trial_data = {
+                type: 'real_experiment',
+                money: money,
+                timestep: timestep,
+                curr_stage: curr_stage,
+                action: most_recent_action,
+                reward: most_recent_money,
+            }
+            return "<h3>"+ getMonthYear() + " - you have " + months_left + " months left.</h3><p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p> " +
+            "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updateMoney()) + ".</p>" + congrats_message + i_or_m() + reward_info +
+            "<div style='display:none;'>" +  jsPsych.data.write(trial_data) + "</div>"; //cleaner way to do this?
+
+          },
+      cont_key: [73, 77],
+    };
+
+    var prod0_test_phase = {
+      type: "text",
+      text: function() {
+          var product_stage_message = ""
+          var months_left = test_timesteps - timestep
+          //var next_sim_msg = "Press enter to proceed."
+          var original_stage = curr_stage
+          getMostRecentKey()
+          var gottenMoney = getMoney()
+          var updatedMoney = updateMoney()
+          if (actions[getMostRecentKey()] == 'invest'){
+            product_stage_message = prod_b + " is now " + howDeveloped() + "% developed.";
+          }
+          if(actions[getMostRecentKey()] == 'market'){
+            product_stage_message = prod_b + " remains " + howDeveloped() + "% developed (unchanged).";
+          }
+          // if(timestep == test_timesteps-1 && tracker_index != test_stage_tracker.length-1){ //subtle
+          //   next_sim_msg =  "Press 'Enter' to proceed to next simulation."
+          // }
+          var trial_data = {
+              type: 'test_experiment',
+              money: money,
+              timestep: timestep,
+              curr_stage: curr_stage,
+              action: most_recent_action,
+              reward: most_recent_money,
+          }
+          var simulation = tracker_index +1
+
+          var main_message = "<p>" + prod_b+ " was "+howDeveloped(original_stage) + "% developed. You decided to <b>"+ actions[getMostRecentKey()] + "</b>. " + product_stage_message + "</p>" +
+          "<p>This returns a profit of $" + numberWithCommas(gottenMoney) + ", for a current total of $" + numberWithCommas(updatedMoney) + ".</p>"
+          if(timestep == 0){
+            money = init_money
+            curr_stage = test_stage_tracker[tracker_index] //OVERRIDES THE RESULT OF getMoney()
+            main_message = "<p>" + prod_b + " is currently " + howDeveloped(curr_stage) + "% developed. You have $" + numberWithCommas(money) + ".</p>"
+          }
+
+          if(timestep == test_timesteps){
+            return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Press <b>I</b> or <b>M</b> to start the next simulation." + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
+          }
+
+          return "<h3>" + getMonthYear() + " - you have " + months_left + " months left - simulation " + simulation + "/" + test_stage_tracker.length + "</h3>" + main_message + "Would you like to invest or market?" + i_or_m() + "<div style='display:none;'>" + jsPsych.data.write(trial_data) + "</div>";
+          },
+      cont_key: [73, 77],
+    };
+
+
+    var test_run_chunk = {
+        chunk_type: 'while',
+        timeline: [prod0_test_phase],
+        continue_function: function(){
+            if (tracker_index == test_stage_tracker.length-1 && timestep == test_timesteps){ //subtract by 1 because of start at 0. Couldnt use curr_stage == test_stage_tracker[test_stage_tracker.length-1], because curr_stage is updated
+              return false;
+            }
+
+            else {
+              if(timestep == test_timesteps){
+                timestep = 0
+                tracker_index+=1
+                curr_stage = test_stage_tracker[tracker_index] //resetting and incrementing
+              }else{
+                  timestep +=1
+              }
+              return true;
+            }
+        }
+    }
+
+    var phase_2_intro_chunk = {
+      chunk_type: 'while',
+      timeline: [phase2_instructions, phase_2_quiz],
+      continue_function: function(){
+        if(checkQuiz()){
+          return false;
+        }
+        else{
+          quiz_error += 1
+          return true;
+        }
+      }
+    }
+
+    // resets all variables that were changed in the test run, for the actual run
+    var reset_block = {
+      type: 'call-function',
+      func: function(){
+        money = init_money
+        timestep = 0
+        curr_stage = 0
+        most_recent_action = ""
+        most_recent_money = 0
+        condition = "realism"
+        transition_prob_scaling = condition_probs["realism"]  //being redundant
+      }
+    };
+
+    var live_run_chunk = {
+        chunk_type: 'while',
+        timeline: [prod0_phase],
+        continue_function: function(){
+            timestep +=1
+            if(timestep > goal_timestep) {
+              return false;
+            }
+            else { return true; }
+        }
+    }
+
+    var final_page_quiz = function(){ return ["<p>Thank you for your time! In the course of " + goal_timestep + " months, you went from $" + numberWithCommas(init_money) +" to $" + numberWithCommas(money) + ".</p> Based on your experience, what do you estimate is the monthly percent development in " + prod_b + " when you choose to invest (enter just a number)?", "What about the monthly percent development in " + prod_b + " when you choose not to invest (enter just a number)?"] }
+
+    var debrief_block = {
+      type: "survey-text",
+      questions: [final_page_quiz],
+    };
+
+    //Consent form
+    var check_consent = function(elem) {
+        if ($('#consent_checkbox').is(':checked')) {
+            return true;
+        }
+        else {
+            alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+            return false;
+        }
+        return false;
+    };
+    var consent_form = {type:'html', pages: [{url: 'consent.html', cont_btn: "start",check_fn: check_consent}]};
+
+    function getMostRecentKey(){
+      var trials = jsPsych.data.getTrialsOfType('text');
+      var most_recent_trial = trials[trials.length - 1]
+      if (typeof(most_recent_trial) == "undefined"){
+        return ""
+      }
+      most_recent_action = actions[most_recent_trial['key_press']]
+      return most_recent_trial['key_press'];
+
+    }
+
+    //Returns money for specific action - scales prob by condition (pess, opt, real)
+    function getMoney(){
+      if(most_recent_action == "invest"){
+        var scaled_prob = bin_p * transition_prob_scaling
+        curr_stage = Math.min(100, curr_stage + binomial(bin_n, scaled_prob))
+        most_recent_money = normal_random(invest_mean, invest_variance); //returns reward
+      }
+      if(most_recent_action == "market"){    //returns reward based on current stage of product
+        if(curr_stage == num_stages){ //final stage should return bigger reward
+          most_recent_money = normal_random(big_mean, big_variance)
+        }else{  //intermediate stages should return reward with same dist.
+          most_recent_money = normal_random(market_mean, market_variance);
+        }
+      }
+      return most_recent_money;
+    }
+
+    //Returns total amount of money after taking action
+    function updateMoney(){
+      money += most_recent_money
+      return money;
+    }
+
+    function getMonthYear(date){
+      if(typeof(date)=='undefined'){
+        date = timestep
+      }
+      var day = new Date()
+      var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+      var month = months[Math.floor(day.getMonth() + date)%12]
+      var year = day.getFullYear() + Math.floor((date+day.getMonth())/12)
+      return month + " " + year;
+    }
+
+    function howDeveloped(a){
+      if (a == undefined){
+        a = curr_stage
+      }
+      return (a/num_stages * 100).toFixed(2);
+    }
+
+    function checkQuiz(){
+      var answer = {'Q0': market_mean, 'Q1': invest_mean,'Q2': big_mean}
+      var quiz_response = jsPsych.data.getTrialsOfType('survey-text')
+      var most_recent = quiz_response[quiz_response.length-1]
+      var response = JSON.parse(most_recent['responses'])
+      for(var key in response){
+        if(parseInt(response[key]) != answer[key]){
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function shuffleArray(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+        return array;
+    }
+
+    //Returns normally distributed values
+    function normal_random(mean, variance) {
+      if (mean == undefined)
+        mean = 0.0;
+      if (variance == undefined)
+        variance = 1.0;
+      var V1, V2, S;
+      do {
+        var U1 = Math.random();
+        var U2 = Math.random();
+        V1 = 2 * U1 - 1;
+        V2 = 2 * U2 - 1;
+        S = V1 * V1 + V2 * V2;
+      } while (S > 1);
+
+      X = Math.sqrt(-2 * Math.log(S) / S) * V1;
+      X = mean + Math.sqrt(variance) * X;
+      return Math.round(X);
+    }
+
+    //Returns sample from binomial distribution
+    function binomial(n, p){
+      var x = 0;
+      for(var i=0; i<n; i++){
+        if(Math.random() < p){
+          x++;
+        }
+      }
+      return x
+    }
+
+    function numberWithCommas(x) {
+      return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // defining the experiment
+    var experiment = [];
+    experiment.push(consent_form);
+    experiment.push(phase1_intro_blocks);
+    experiment.push(test_run_chunk);
+    experiment.push(reset_block);
+    experiment.push(phase_2_intro_chunk);
+    experiment.push(prod2_correct_answer);
+    experiment.push(live_start);
+    experiment.push(live_run_chunk);
+    experiment.push(debrief_block);
+
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: experiment,
+      on_finish: function(data) {
+        turk.submit(data, true)
+      }
+    });
+  </script>
+</html>
