@@ -36,7 +36,7 @@
     var invest_variance = (0.01 * Math.pow(invest_mean,2))
     var market_mean = 10000;  //mean and variance for reward upon marketing
     var market_variance = (0.01 * Math.pow(market_mean,2))
-    var big_mean = 200000 //135000       //mean and variance for reward if prod B at final stage
+    var big_mean = 135000       //mean and variance for reward if prod B at final stage
     var big_variance = (0.01 * Math.pow(big_mean,2))
     var bin_n = 100         //transition prob
     var bin_p
@@ -47,14 +47,14 @@
     var tracker_index = 0
 
     // Randomly select # of timesteps
-    possible_timesteps = [5] //[4, 12, 24, 72]
+    possible_timesteps = [12] //[4, 12, 24, 72]
     goal_timestep = possible_timesteps[Math.floor(Math.random() * possible_timesteps.length)];
 
     // Randomly select condition
     possible_conditions = ["optimism", "pessimism", "realism"]
     condition = possible_conditions[Math.floor(Math.random() * possible_conditions.length)];
 
-    bin_p = 1/(0.8 * (goal_timestep-1))
+    bin_p = 1/(0.65 * (goal_timestep))
 
     var condition //you can have "optimism", "realism", or "pessimism" here
     var condition_probs = {"optimism": 0.8/bin_p, "realism": 1, "pessimism": 0.5} //can adjust level of optimism and pessimism
